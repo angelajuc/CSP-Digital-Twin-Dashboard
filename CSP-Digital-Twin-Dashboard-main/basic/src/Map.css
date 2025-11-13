@@ -1,0 +1,43 @@
+/* root wraps the entire map component and fills its parent */
+.map-root {
+  height: 100%;
+  width: 100%;
+  position: relative; /* anchor any absolute children (like the coords badge) */
+}
+
+.map-container {
+  width: 300%;
+  height: 100%;
+  position: absolute;
+}
+
+.map-wrap {
+  height: calc(100vh - 72px); /* fits under the topbar nicely; tweak if needed */
+  /* width: calc(100% - 32px); */
+  width: 100%;
+  border-radius: 12px;
+  position: relative;  /* contains Mapbox absolute children */
+  min-width: 0;
+  min-height: 0;
+}
+
+
+.sidebarStyle {
+  position: relative;
+  top: 8px;
+  left: 8px;
+  background: #404040;
+  color: #fff;
+  z-index: 2;
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+
+
+.dot-marker {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.1);
+}

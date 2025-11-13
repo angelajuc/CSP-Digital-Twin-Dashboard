@@ -1,0 +1,9 @@
+﻿__pycache__/
+.venv/
+.claude/
+*.pyc
+*.pyo
+.DS_Store
+*.log
+marietta_traffic_data/
+*.db
