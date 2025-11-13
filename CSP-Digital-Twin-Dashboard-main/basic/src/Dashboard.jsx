@@ -5,8 +5,7 @@ import {
   BarChart, Bar
 } from "recharts";
 import "./dashboard.css";
-import { fetchJoinedReadings, fetchSpeedStats } from "./supaRest";
-import { fetchJoinedReadingsAll } from "./supaRest";
+import { fetchAnalyticsReadingsAll, fetchAnalyticsStats } from "./analyticsApi";
 import cityLogo from "./assets/cityLogo.png";
 import MapView from "./Map";
 import PredictionView from "./PredictionView";
@@ -95,32 +94,24 @@ export default function Dashboard() {
     { value: "30067", label: "30067" },
     { value: "30066", label: "30066" },
     { value: "30064", label: "30064" },
-    { value: "30062", label: "30062" },
-    { value: "30060", label: "30060" },
-    { value: "30008", label: "30008" }
+    { value: "30060", label: "30060" }
   ];
 
-  // Fetch data from Supabase REST
+  // Fetch data from DuckDB via Analytics API
   useEffect(() => {
-    //const hours = range === "7d" ? 24 * 7 : range === "30d" ? 24 * 30 : 24 * 90;
-    //const hours = rangeMap[range] ?? 24 * 30;
-
     const hours = rangeMap[range] ?? 24 * 30;
     setLoading(true);
     setErr(null);
-    // setRows([]);
 
     const ctrl = new AbortController();
 
     (async () => {
     try {
       let data = [];
-
       let kpiData = { avg: 0, min: 0, max: 0, avgConf: 0 };
 
       if (selectedDate) {
         const [y, m, d] = selectedDate.split("-").map(Number);
-
         const start = new Date(Date.UTC(y, m - 1, d, 0, 0, 0));
         const end   = new Date(start);
 
@@ -144,39 +135,56 @@ export default function Dashboard() {
             end.setUTCDate(end.getUTCDate() + 1);
         }
 
-        const stats = await fetchSpeedStats({
-            zip,
+        // Fetch stats from DuckDB API
+        const stats = await fetchAnalyticsStats({
+            zipcode: zip,
             start: start.toISOString(),
             end: end.toISOString(),
         });
 
-        if (stats && stats.length > 0) {
-            const s = stats[0];
-              kpiData = {
-                avg: Number(s.avg_speed ?? 0),
-                min: Number(s.min_speed ?? 0),
-                max: Number(s.max_speed ?? 0),
-                avgConf: Number(s.avg_confidence ?? 0),
-              };
-        }
+        kpiData = {
+          avg: Number(stats.avg_speed ?? 0),
+          min: Number(stats.min_speed ?? 0),
+          max: Number(stats.max_speed ?? 0),
+          avgConf: Number(stats.avg_confidence ?? 0),
+        };
 
-        // Preferred: server-side filtering
-        data = await fetchJoinedReadingsAll({
-          zip,
+        // Fetch all readings from DuckDB API
+        data = await fetchAnalyticsReadingsAll({
+          zipcode: zip,
           start: start.toISOString(),
           end: end.toISOString(),
-          pageSize: 2000, // match your cap
+          pageSize: 2000,
           signal: ctrl.signal,
         });
       } else {
-        // no date chosen - fallback just use "last X hours"
-        data = await fetchJoinedReadings({ hours: rangeMap[range] ?? 24, });
+        // No date chosen - fallback to hours
+        const stats = await fetchAnalyticsStats({
+          zipcode: zip,
+          hours: rangeMap[range] ?? 24,
+        });
+
+        kpiData = {
+          avg: Number(stats.avg_speed ?? 0),
+          min: Number(stats.min_speed ?? 0),
+          max: Number(stats.max_speed ?? 0),
+          avgConf: Number(stats.avg_confidence ?? 0),
+        };
+
+        data = await fetchAnalyticsReadingsAll({
+          zipcode: zip,
+          hours: rangeMap[range] ?? 24,
+          pageSize: 2000,
+          signal: ctrl.signal,
+        });
       }
 
       setKpi(kpiData);
       setRows(data || []);
     } catch (e) {
-      setErr(e.message || String(e));
+      if (e.name !== 'AbortError') {
+        setErr(e.message || String(e));
+      }
     } finally {
       setLoading(false);
     }
