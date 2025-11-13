@@ -346,12 +346,6 @@ const tooltipHour = (h) => {
                 onClick={() => setActiveTab("overview")}
             />
             <SidebarItem
-                label="Map"
-                active={activeTab === "map"}
-                onClick={() => setActiveTab("map")}
-
-            />
-            <SidebarItem
                 label="Analytics"
                 active={activeTab === "analytics"}
                 onClick={() => setActiveTab("analytics")}
@@ -409,13 +403,6 @@ const tooltipHour = (h) => {
 
         {/* Main */}
           <main className="main">
-          {/* MAP VIEW */}
-            {activeTab === "map" && (
-                <div className="map-wrap">
-                    <MapView rows={rows} />
-                </div>
-            )}
-          
           {/* OVERVIEW VIEW */}
             {activeTab === "overview" && (
                 <>
