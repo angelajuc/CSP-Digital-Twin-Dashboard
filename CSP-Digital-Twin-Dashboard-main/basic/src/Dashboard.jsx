@@ -284,6 +284,48 @@ export default function Dashboard() {
     }));
   }, [rows]);
 
+  // Speed vs Reference Speed by hour
+  const speedVsReference = useMemo(() => {
+    const acc = new Map(); // hour -> { speedSum, refSum, n }
+    for (const r of rows) {
+      if (!Number.isFinite(r.speed) || !r.measurement_tstamp) continue;
+      const h = new Date(r.measurement_tstamp).getHours();
+      const v = acc.get(h) || { speedSum: 0, refSum: 0, n: 0 };
+      v.speedSum += r.speed;
+      v.refSum += r.reference_speed || r.speed; // fallback to speed if no reference
+      v.n += 1;
+      acc.set(h, v);
+    }
+    return Array.from({ length: 24 }, (_, h) => {
+      const data = acc.get(h);
+      return {
+        hour: h,
+        actual_speed: data ? data.speedSum / data.n : 0,
+        reference_speed: data ? data.refSum / data.n : 0,
+      };
+    });
+  }, [rows]);
+
+  // Day of week patterns
+  const dayOfWeekPattern = useMemo(() => {
+    const acc = new Map(); // day -> { sum, n }
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+    for (const r of rows) {
+      if (!Number.isFinite(r.speed) || !r.measurement_tstamp) continue;
+      const day = new Date(r.measurement_tstamp).getDay(); // 0=Sunday, 6=Saturday
+      const v = acc.get(day) || { sum: 0, n: 0 };
+      v.sum += r.speed;
+      v.n += 1;
+      acc.set(day, v);
+    }
+
+    return Array.from({ length: 7 }, (_, day) => ({
+      day: dayNames[day],
+      avg_speed: acc.get(day) ? acc.get(day).sum / acc.get(day).n : 0,
+    }));
+  }, [rows]);
+
   const formatHour = (h) => {
   const hr = Number(h) % 24;
   const suffix = hr < 12 ? "am" : "pm";
@@ -585,6 +627,68 @@ const tooltipHour = (h) => {
               <Tooltip />
               <Line type="monotone" dataKey="speed" dot={false} strokeWidth={2} />
             </LineChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      <Card className="chart-2w">
+        <CardHeader><CardTitle>Actual vs Reference Speed by Hour</CardTitle></CardHeader>
+        <CardContent className="chart-h">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={speedVsReference} margin={{ top: 10, right: 30, left: 0, bottom: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis
+                dataKey="hour"
+                label={{ value: "Hour of Day", position: "insideBottom", offset: -10 }}
+              />
+              <YAxis
+                label={{ value: "Speed (mph)", angle: -90, position: "insideLeft" }}
+              />
+              <Tooltip
+                formatter={(value, name) => [
+                  `${Number(value).toFixed(1)} mph`,
+                  name === "actual_speed" ? "Actual Speed" : "Reference Speed"
+                ]}
+              />
+              <Line
+                type="monotone"
+                dataKey="actual_speed"
+                stroke="#8884d8"
+                strokeWidth={2}
+                dot={false}
+                name="Actual Speed"
+              />
+              <Line
+                type="monotone"
+                dataKey="reference_speed"
+                stroke="#82ca9d"
+                strokeWidth={2}
+                dot={false}
+                name="Reference Speed"
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle>Traffic by Day of Week</CardTitle></CardHeader>
+        <CardContent className="chart-h">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={dayOfWeekPattern} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis
+                dataKey="day"
+                label={{ value: "Day of Week", position: "insideBottom", offset: -10 }}
+              />
+              <YAxis
+                label={{ value: "Avg Speed (mph)", angle: -90, position: "insideLeft" }}
+              />
+              <Tooltip
+                formatter={(value) => [`${Number(value).toFixed(1)} mph`, "Avg Speed"]}
+              />
+              <Bar dataKey="avg_speed" fill="#8884d8" />
+            </BarChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>
